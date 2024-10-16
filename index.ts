@@ -5,21 +5,43 @@ async function getInstagramFollowers(instagramId: string): Promise<number> {
 			throw new Error(`HTTP error! status: ${response.status}`)
 		}
 		const html = await response.text()
-
-		// Extract the follower count from the meta tag
 		const followerMatch = html.match(
-			/<meta property="og:description" content="(.*?) Followers/,
+			/<meta property="og:description" content="([^"]*?)"/,
 		)
 		if (!followerMatch) {
 			throw new Error("Could not find follower count in the HTML")
 		}
 
-		const followerCount = followerMatch[1].replace(/,/g, "")
-		return Number.parseInt(followerCount, 10)
+		const followerCountMatch = followerMatch[1].match(
+			/(\d+(?:\.\d+)?[KkMm]?) Followers/,
+		)
+		if (!followerCountMatch) {
+			throw new Error(
+				"Could not extract follower count from the matched string",
+			)
+		}
+
+		return parseFollowerCount(followerCountMatch[1])
 	} catch (error) {
 		console.error("Error fetching Instagram followers:", error)
 		return -1
 	}
+}
+
+function parseFollowerCount(count: string): number {
+	if (count.toLowerCase().includes("k")) {
+		return Math.round(
+			Number.parseFloat(count.toLowerCase().replace("k", "")) * 1000,
+		)
+	}
+
+	if (count.toLowerCase().includes("m")) {
+		return Math.round(
+			Number.parseFloat(count.toLowerCase().replace("m", "")) * 1000000,
+		)
+	}
+
+	return Math.round(Number.parseFloat(count))
 }
 
 interface InstagramData {
@@ -38,7 +60,6 @@ async function getMultipleInstagramData(
 
 	for (const id of instagramIds) {
 		try {
-			// Wrap the getInstagramFollowers call in a timeout
 			const followersPromise = new Promise<number>((resolve, reject) => {
 				const timeoutId = setTimeout(() => {
 					reject(new Error(`Timeout fetching data for ${id}`))
@@ -60,7 +81,6 @@ async function getMultipleInstagramData(
 				timestampScraped: new Date().toISOString(),
 			})
 
-			// Generate a random delay between minDelayMs and maxDelayMs
 			const randomDelay =
 				Math.floor(Math.random() * (maxDelayMs - minDelayMs + 1)) + minDelayMs
 			await new Promise((resolve) => setTimeout(resolve, randomDelay))
@@ -78,7 +98,12 @@ async function getMultipleInstagramData(
 }
 
 // Example usage
-const instagramIds = ["instagram", "cacoalition4rf"]
+const instagramIds = [
+	"tidescommunity",
+	"cacoalition4rf",
+	"google",
+	"causeErrorsdkjkdsj",
+]
 
 getMultipleInstagramData(instagramIds)
 	.then((data) => {
