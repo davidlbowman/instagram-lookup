@@ -30,16 +30,48 @@ interface InstagramData {
 
 async function getMultipleInstagramData(
 	instagramIds: string[],
+	minDelayMs = 200,
+	maxDelayMs = 1000,
+	timeoutMs = 10000,
 ): Promise<InstagramData[]> {
 	const results: InstagramData[] = []
 
 	for (const id of instagramIds) {
-		const followers = await getInstagramFollowers(id)
-		results.push({
-			username: id,
-			numberOfFollowers: followers,
-			timestampScraped: new Date().toISOString(),
-		})
+		try {
+			// Wrap the getInstagramFollowers call in a timeout
+			const followersPromise = new Promise<number>((resolve, reject) => {
+				const timeoutId = setTimeout(() => {
+					reject(new Error(`Timeout fetching data for ${id}`))
+				}, timeoutMs)
+
+				getInstagramFollowers(id)
+					.then((followers) => {
+						clearTimeout(timeoutId)
+						resolve(followers)
+					})
+					.catch(reject)
+			})
+
+			const followers = await followersPromise
+
+			results.push({
+				username: id,
+				numberOfFollowers: followers,
+				timestampScraped: new Date().toISOString(),
+			})
+
+			// Generate a random delay between minDelayMs and maxDelayMs
+			const randomDelay =
+				Math.floor(Math.random() * (maxDelayMs - minDelayMs + 1)) + minDelayMs
+			await new Promise((resolve) => setTimeout(resolve, randomDelay))
+		} catch (error) {
+			console.error(`Error fetching data for ${id}:`, error)
+			results.push({
+				username: id,
+				numberOfFollowers: -1,
+				timestampScraped: new Date().toISOString(),
+			})
+		}
 	}
 
 	return results
