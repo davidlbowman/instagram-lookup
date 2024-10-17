@@ -15,6 +15,7 @@ async function getInstagramFollowers(instagramId: string): Promise<number> {
 		const followerCountMatch = followerMatch[1].match(
 			/(\d+(?:\.\d+)?[KkMm]?) Followers/,
 		)
+
 		if (!followerCountMatch) {
 			throw new Error(
 				"Could not extract follower count from the matched string",
